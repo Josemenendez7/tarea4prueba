@@ -5,114 +5,137 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const App = () => {
+  
+const MemoryGame = () => {
+  const [cards, setCards] = useState<{ id: number; image: any; flipped: boolean }[]>([]);
+  const [selectedCards, setSelectedCards] = useState<{ id: number; image: any; flipped: boolean }[]>([]);
+  const [attempts, setAttempts] = useState<number>(0);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  const initializeGame = () => {
+    // Crear una lista de cartas duplicada (dos veces cada carta)
+    const allCards = [
+      require('./imagenes/carta1.png'),
+      require('./imagenes/carta2.png'),
+      require('./imagenes/carta3.png'),
+      require('./imagenes/carta4.png'),
+      require('./imagenes/carta5.png'),
+      require('./imagenes/carta6.png'),
+      // ... Agregar las rutas de las imágenes de las cartas restantes
+    ];
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+    const duplicatedCards = [...allCards, ...allCards];
+    
+    // Barajar las cartas al azar
+    const shuffledCards = duplicatedCards.sort(() => Math.random() - 0.5);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    setCards(shuffledCards.map((card, index) => ({ id: index, image: card, flipped: false })));
   };
 
+  const flipCard = (cardId: number): void => {
+    setCards(prevCards => prevCards.map(card => 
+      card.id === cardId ? { ...card, flipped: !card.flipped } : card
+    ));
+  };
+
+  const checkMatch = (): void => {
+    if (selectedCards.length === 2) {
+      setAttempts(attempts + 1);
+
+      if (selectedCards[0].image === selectedCards[1].image) {
+        // Las cartas coinciden, déjalas descubiertas
+        setSelectedCards([]);
+      } else {
+        // Las cartas no coinciden, voltea las cartas después de un breve retraso
+        setTimeout(() => {
+          setCards(prevCards => prevCards.map(card => 
+            selectedCards.some(selectedCard => selectedCard.id === card.id) 
+              ? { ...card, flipped: false } 
+              : card
+          ));
+          setSelectedCards([]);
+        }, 1000);
+      }
+    }
+  };
+
+  const handleCardPress = (cardId: number): void => {
+    // Evitar seleccionar más de dos cartas a la vez
+    if (selectedCards.length < 2 && !cards[cardId].flipped) {
+      flipCard(cardId);
+      setSelectedCards([...selectedCards, cards[cardId]]);
+      checkMatch();
+    }
+  };
+
+  const renderCard = (card: { id: number; image: any; flipped: boolean }): React.ReactNode => {
+    const rotateY = card.flipped ? '0deg' : '180deg';
+    const cardStyle = {
+      transform: [{ rotateY }],
+    };
+
+    return (
+      <Animated.View style={[styles.card, cardStyle]}>
+        <Image source={card.flipped ? card.image : require('./imagenes/reves.png')} style={styles.cardImage} />
+      </Animated.View>
+    );
+  };
+
+  useEffect(() => {
+    initializeGame();
+  }, []);
+
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <View style={styles.container}>
+      <Text style={styles.attemptsText}>Intentos: {attempts}</Text>
+      <View style={styles.cardsContainer}>
+        {cards.map((card) => (
+          <TouchableOpacity
+            key={card.id}
+            style={styles.card}
+            onPress={() => handleCardPress(card.id)}
+            activeOpacity={0.7}
+          >
+            {renderCard(card)}
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  attemptsText: {
+    fontSize: 20,
+    marginBottom: 20,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  cardsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
-  highlight: {
-    fontWeight: '700',
+  card: {
+    width: 80,
+    height: 120,
+    margin: 10,
+    borderWidth: 2,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backfaceVisibility: 'hidden',
+  },
+  cardImage: {
+    width: 60,
+    height: 90,
   },
 });
-
+}
 export default App;
