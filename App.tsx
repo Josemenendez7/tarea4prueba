@@ -1,108 +1,112 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 
 const App = () => {
-  
-const MemoryGame = () => {
   const [cards, setCards] = useState<{ id: number; image: any; flipped: boolean }[]>([]);
-  const [selectedCards, setSelectedCards] = useState<{ id: number; image: any; flipped: boolean }[]>([]);
+  const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [attempts, setAttempts] = useState<number>(0);
 
-  const initializeGame = () => {
-    // Crear una lista de cartas duplicada (dos veces cada carta)
-    const allCards = [
-      require('./imagenes/carta1.png'),
-      require('./imagenes/carta2.png'),
-      require('./imagenes/carta3.png'),
-      require('./imagenes/carta4.png'),
-      require('./imagenes/carta5.png'),
-      require('./imagenes/carta6.png'),
-      // ... Agregar las rutas de las imágenes de las cartas restantes
-    ];
+  useEffect(() => {
+    const initializeGame = () => {
+      const allCards = [
+        require('./imagenes/carta1.png'),
+        require('./imagenes/carta2.png'),
+        require('./imagenes/carta3.png'),
+        require('./imagenes/carta4.png'),
+        require('./imagenes/carta5.png'),
+        require('./imagenes/carta6.png'),
+      ];
 
-    const duplicatedCards = [...allCards, ...allCards];
-    
-    // Barajar las cartas al azar
-    const shuffledCards = duplicatedCards.sort(() => Math.random() - 0.5);
+      const duplicatedCards = [...allCards, ...allCards];
+      const shuffledCards = duplicatedCards.sort(() => Math.random() - 0.5);
 
-    setCards(shuffledCards.map((card, index) => ({ id: index, image: card, flipped: false })));
-  };
+      setCards(shuffledCards.map((card, index) => ({ id: index, image: card, flipped: false })));
+    };
+
+    initializeGame();
+  }, []);
 
   const flipCard = (cardId: number): void => {
-    setCards(prevCards => prevCards.map(card => 
-      card.id === cardId ? { ...card, flipped: !card.flipped } : card
-    ));
+    setCards((prevCards) =>
+      prevCards.map((card) =>
+        card.id === cardId ? { ...card, flipped: !card.flipped } : card
+      )
+    );
   };
 
   const checkMatch = (): void => {
     if (selectedCards.length === 2) {
       setAttempts(attempts + 1);
 
-      if (selectedCards[0].image === selectedCards[1].image) {
-        // Las cartas coinciden, déjalas descubiertas
+      const [firstCardId, secondCardId] = selectedCards;
+
+      if (cards[firstCardId].image === cards[secondCardId].image) {
+
         setSelectedCards([]);
       } else {
-        // Las cartas no coinciden, voltea las cartas después de un breve retraso
+
         setTimeout(() => {
-          setCards(prevCards => prevCards.map(card => 
-            selectedCards.some(selectedCard => selectedCard.id === card.id) 
-              ? { ...card, flipped: false } 
-              : card
-          ));
+          setCards((prevCards) =>
+            prevCards.map((card) =>
+              selectedCards.includes(card.id)
+                ? { ...card, flipped: false }
+                : card
+            )
+          );
           setSelectedCards([]);
-        }, 1000);
+        }, 50);
       }
     }
   };
 
   const handleCardPress = (cardId: number): void => {
-    // Evitar seleccionar más de dos cartas a la vez
     if (selectedCards.length < 2 && !cards[cardId].flipped) {
+  
+      setSelectedCards((prevSelected) => [...prevSelected, cardId]);
       flipCard(cardId);
-      setSelectedCards([...selectedCards, cards[cardId]]);
-      checkMatch();
+
+
+      if (selectedCards.length === 1) {
+        checkMatch();
+      }
+    } else {
+
+      setTimeout(() => {
+        setCards((prevCards) =>
+          prevCards.map((card) =>
+            selectedCards.includes(card.id)
+              ? { ...card, flipped: false }
+              : card
+          )
+        );
+        setSelectedCards([]);
+        flipCard(cardId);
+      }, 50);
     }
   };
 
   const renderCard = (card: { id: number; image: any; flipped: boolean }): React.ReactNode => {
-    const rotateY = card.flipped ? '0deg' : '180deg';
-    const cardStyle = {
-      transform: [{ rotateY }],
-    };
-
     return (
-      <Animated.View style={[styles.card, cardStyle]}>
-        <Image source={card.flipped ? card.image : require('./imagenes/reves.png')} style={styles.cardImage} />
-      </Animated.View>
+      <TouchableOpacity
+        key={card.id}
+        style={styles.cardContainer}
+        onPress={() => handleCardPress(card.id)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.card, { transform: [{ rotateY: card.flipped ? '180deg' : '0deg' }] }]}>
+          <Image
+            source={card.flipped ? card.image : require('./imagenes/reves.png')}
+            style={styles.cardImage}
+          />
+        </View>
+      </TouchableOpacity>
     );
   };
-
-  useEffect(() => {
-    initializeGame();
-  }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.attemptsText}>Intentos: {attempts}</Text>
-      <View style={styles.cardsContainer}>
-        {cards.map((card) => (
-          <TouchableOpacity
-            key={card.id}
-            style={styles.card}
-            onPress={() => handleCardPress(card.id)}
-            activeOpacity={0.7}
-          >
-            {renderCard(card)}
-          </TouchableOpacity>
-        ))}
-      </View>
+      <View style={styles.cardsContainer}>{cards.map(renderCard)}</View>
     </View>
   );
 };
@@ -110,32 +114,35 @@ const MemoryGame = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F08080', 
     justifyContent: 'center',
     alignItems: 'center',
   },
   attemptsText: {
     fontSize: 20,
     marginBottom: 20,
+    color: '#5F18ED', 
   },
   cardsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
+  cardContainer: {
+    margin: 10,
+  },
   card: {
     width: 80,
     height: 120,
-    margin: 10,
     borderWidth: 2,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backfaceVisibility: 'hidden',
+    backgroundColor: '#2DC2BB', 
+    overflow: 'hidden',
   },
   cardImage: {
-    width: 60,
-    height: 90,
+    width: '100%',
+    height: '100%',
   },
 });
-}
+
 export default App;
